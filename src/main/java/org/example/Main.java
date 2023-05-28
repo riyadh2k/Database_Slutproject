@@ -1,8 +1,8 @@
 package org.example;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import java.sql.*;
+
 import java.util.Scanner;
-import static java.sql.DriverManager.getConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -33,7 +33,7 @@ public class Main {
             System.out.println("5. Update User's Information");
             System.out.println("6. Send Amount  ");
             System.out.println("7. List Of Account Transaction ");
-            System.out.println("8. Insert sample data");
+            System.out.println("8. User's Summary");
             System.out.println("9. Avsluta");
 
             switch (scanner.nextLine().trim()) {
@@ -65,7 +65,7 @@ public class Main {
                     break;
 
                 case "8":
-                    //insertSampleData();
+                    userSummary();
                     break;
 
                 case "9":
@@ -122,7 +122,7 @@ public class Main {
         // Create users table
         String createUsersTableQuery = "CREATE TABLE IF NOT EXISTS users ("
                 + "user_id INT PRIMARY KEY AUTO_INCREMENT, "
-                + "social_security_number VARCHAR(12) NOT NULL, "
+                + "social_security_number VARCHAR(11) NOT NULL, "
                 + "password VARCHAR(100) NOT NULL, "
                 + "name VARCHAR(100) NOT NULL, "
                 + "email VARCHAR(100) NOT NULL, "
@@ -136,11 +136,11 @@ public class Main {
         // Create accounts table
         String createAccountsTableQuery = "CREATE TABLE IF NOT EXISTS accounts ("
                 + "account_id INT PRIMARY KEY AUTO_INCREMENT, "
-                + "social_security_number VARCHAR(12) , "
+                + "user_id INT , "
                 + "account_number INT , "
                 + "balance DOUBLE , "
                 + "created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-                + "FOREIGN KEY (social_security_number) REFERENCES users(social_security_number)"
+                + "FOREIGN KEY (user_id) REFERENCES users(user_id)"
                 + ")";
         int resultAccountsTable = statement.executeUpdate(createAccountsTableQuery);
         System.out.println("Accounts table creation result: " + resultAccountsTable);
@@ -148,14 +148,18 @@ public class Main {
         // Create transactions table
         String createTransactionsTableQuery = "CREATE TABLE IF NOT EXISTS transactions ("
                 + "transaction_id INT PRIMARY KEY AUTO_INCREMENT, "
-                + "account_number INT , "
-                + "sender_account_number INT , "
-                + "receiver_account_number INT , "
+                + "account_id INT , "
+                + "sender_account_id INT , "
+                + "receiver_account_id INT , "
                 + "amount DOUBLE NOT NULL, "
+                + "transaction_type VARCHAR(50), " // Add transaction_type column
                 + "transaction_date_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-                + "FOREIGN KEY (sender_account_number) REFERENCES accounts(account_number), "
-                + "FOREIGN KEY (receiver_account_number) REFERENCES accounts(account_number)"
+                + "FOREIGN KEY (account_id) REFERENCES accounts(account_id), "
+                + "FOREIGN KEY (sender_account_id) REFERENCES accounts(account_id), "
+                + "FOREIGN KEY (receiver_account_id) REFERENCES accounts(account_id)"
                 + ")";
+
+
         int resultTransactionsTable = statement.executeUpdate(createTransactionsTableQuery);
         System.out.println("Transactions table creation result: " + resultTransactionsTable);
 
@@ -592,6 +596,21 @@ public class Main {
                 // Receiver exists
                 int receiverUserId = receiverResultSet.getInt("user_id");
 
+                // Retrieve receiver's accounts
+                String getReceiverAccountsQuery = "SELECT * FROM accounts WHERE user_id = ?";
+                PreparedStatement getReceiverAccountsStatement = connection.prepareStatement(getReceiverAccountsQuery);
+                getReceiverAccountsStatement.setInt(1, receiverUserId);
+                ResultSet receiverAccountsResultSet = getReceiverAccountsStatement.executeQuery();
+
+                System.out.println("Receiver's Accounts:");
+                while (receiverAccountsResultSet.next()) {
+                    int receiverAccountId = receiverAccountsResultSet.getInt("account_id");
+                    String accountNumber = receiverAccountsResultSet.getString("account_number");
+                    double balance = receiverAccountsResultSet.getDouble("balance");
+
+                    System.out.println("Account ID: " + receiverAccountId + ", Account Number: " + accountNumber + ", Balance: " + balance);
+                }
+
                 // Prompt for the receiver's account ID
                 System.out.print("Enter the Account ID of the receiver: ");
                 int receiverAccountId = scanner.nextInt();
@@ -653,8 +672,10 @@ public class Main {
     }
 
 
+
     public static void listAccountTransactions() throws SQLException {
         Connection connection = GetConnection();
+
         Scanner scanner = new Scanner(System.in);
 
         System.out.print("Enter account number: ");
@@ -666,33 +687,102 @@ public class Main {
         System.out.print("Enter end date (yyyy-MM-dd): ");
         String endDate = scanner.nextLine();
 
-        // Retrieve account transactions within the specified date range
-        String getAccountTransactionsQuery = "SELECT * FROM transactions WHERE account_number = ? AND created >= ? AND created <= ? ORDER BY created";
-        PreparedStatement getAccountTransactionsStatement = connection.prepareStatement(getAccountTransactionsQuery);
-        getAccountTransactionsStatement.setString(1, accountNumber);
-        getAccountTransactionsStatement.setString(2, startDate);
-        getAccountTransactionsStatement.setString(3, endDate);
-        ResultSet transactionsResultSet = getAccountTransactionsStatement.executeQuery();
+        // Retrieve account ID based on account number
+        String getAccountIdQuery = "SELECT account_id FROM accounts WHERE account_number = ?";
+        PreparedStatement getAccountIdStatement = connection.prepareStatement(getAccountIdQuery);
+        getAccountIdStatement.setString(1, accountNumber);
+        ResultSet accountIdResultSet = getAccountIdStatement.executeQuery();
 
-        // Display the list of transactions
-        System.out.println("Account Transactions:");
-        while (transactionsResultSet.next()) {
-            int transactionId = transactionsResultSet.getInt("transaction_id");
-            String senderAccountNumber = transactionsResultSet.getString("sender_account_number");
-            String receiverAccountNumber = transactionsResultSet.getString("receiver_account_number");
-            double amount = transactionsResultSet.getDouble("amount");
-            String created = transactionsResultSet.getString("created");
+        if (accountIdResultSet.next()) {
+            int accountId = accountIdResultSet.getInt("account_id");
 
-            System.out.println("Transaction ID: " + transactionId);
-            System.out.println("Sender Account Number: " + senderAccountNumber);
-            System.out.println("Receiver Account Number: " + receiverAccountNumber);
-            System.out.println("Amount: " + amount);
-            System.out.println("Created: " + created);
-            System.out.println("-------------------------");
+            // Retrieve transactions for the specified account and date range
+            String getAccountTransactionsQuery = "SELECT * FROM transactions WHERE (account_id=? OR sender_account_id = ? OR receiver_account_id = ?) AND transaction_date_time BETWEEN ? AND ? ORDER BY transaction_date_time";
+            PreparedStatement getAccountTransactionsStatement = connection.prepareStatement(getAccountTransactionsQuery);
+            getAccountTransactionsStatement.setInt(1, accountId);
+            getAccountTransactionsStatement.setInt(2, accountId);
+            getAccountTransactionsStatement.setInt(3, accountId);
+            getAccountTransactionsStatement.setString(4, startDate);
+            getAccountTransactionsStatement.setString(5, endDate);
+            ResultSet transactionsResultSet = getAccountTransactionsStatement.executeQuery();
+
+            System.out.println("Account Transactions:");
+            while (transactionsResultSet.next()) {
+                int transactionId = transactionsResultSet.getInt("transaction_id");
+                int accountsId = transactionsResultSet.getInt("account_id");
+                int senderAccountId = transactionsResultSet.getInt("sender_account_id");
+                int receiverAccountId = transactionsResultSet.getInt("receiver_account_id");
+                double amount = transactionsResultSet.getDouble("amount");
+                String transactionDateTime = transactionsResultSet.getString("transaction_date_time");
+
+                System.out.println("Transaction ID: " + transactionId);
+                System.out.println("Accounts ID: " + accountsId);
+                System.out.println("Sender Account ID: " + senderAccountId);
+                System.out.println("Receiver Account ID: " + receiverAccountId);
+                System.out.println("Amount: " + amount);
+                System.out.println("Transaction Date Time: " + transactionDateTime);
+                System.out.println("--------------------");
+            }
+        } else {
+            System.out.println("Account not found.");
         }
 
         connection.close();
     }
+
+    public static void userSummary() throws SQLException {
+        Connection connection = GetConnection();
+
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter user's social security number: ");
+        String socialSecurityNumber = scanner.nextLine();
+
+        // Retrieve user details
+        String getUserQuery = "SELECT * FROM users WHERE social_security_number = ?";
+        PreparedStatement getUserStatement = connection.prepareStatement(getUserQuery);
+        getUserStatement.setString(1, socialSecurityNumber);
+        ResultSet userResultSet = getUserStatement.executeQuery();
+
+        if (userResultSet.next()) {
+            int userId = userResultSet.getInt("user_id");
+            String name = userResultSet.getString("name");
+            String email = userResultSet.getString("email");
+            String phoneNumber = userResultSet.getString("phone_number");
+            String address = userResultSet.getString("address");
+
+            System.out.println("User Details:");
+            System.out.println("User ID: " + userId);
+            System.out.println("Name: " + name);
+            System.out.println("Email: " + email);
+            System.out.println("Phone Number: " + phoneNumber);
+            System.out.println("Address: " + address);
+
+            // Retrieve user's associated accounts and amounts
+            String getAccountsQuery = "SELECT * FROM accounts WHERE user_id = ?";
+            PreparedStatement getAccountsStatement = connection.prepareStatement(getAccountsQuery);
+            getAccountsStatement.setInt(1, userId);
+            ResultSet accountsResultSet = getAccountsStatement.executeQuery();
+
+            System.out.println("Associated Accounts:");
+            while (accountsResultSet.next()) {
+                int accountId = accountsResultSet.getInt("account_id");
+                String accountNumber = accountsResultSet.getString("account_number");
+                double balance = accountsResultSet.getDouble("balance");
+
+                System.out.println("Account ID: " + accountId);
+                System.out.println("Account Number: " + accountNumber);
+                System.out.println("Balance: " + balance);
+                System.out.println("--------------------");
+            }
+        } else {
+            System.out.println("User not found.");
+        }
+
+        connection.close();
+    }
+
+
 
 
 
