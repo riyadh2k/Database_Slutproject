@@ -2,6 +2,7 @@ package org.example;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import java.sql.*;
 
+import java.time.LocalDateTime;
 import java.util.Scanner;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -25,7 +26,7 @@ public class Main {
         boolean run = true;
 
         while (run) {
-            System.out.println("Välj vad du vill göra.");
+            System.out.println("Choose what you want to do.");
             System.out.println("1. Create user");
             System.out.println("2. Delete User");
             System.out.println("3. Add User's Account");
@@ -148,13 +149,11 @@ public class Main {
         // Create transactions table
         String createTransactionsTableQuery = "CREATE TABLE IF NOT EXISTS transactions ("
                 + "transaction_id INT PRIMARY KEY AUTO_INCREMENT, "
-                + "account_id INT , "
                 + "sender_account_id INT , "
                 + "receiver_account_id INT , "
                 + "amount DOUBLE NOT NULL, "
                 + "transaction_type VARCHAR(50), " // Add transaction_type column
                 + "transaction_date_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-                + "FOREIGN KEY (account_id) REFERENCES accounts(account_id), "
                 + "FOREIGN KEY (sender_account_id) REFERENCES accounts(account_id), "
                 + "FOREIGN KEY (receiver_account_id) REFERENCES accounts(account_id)"
                 + ")";
@@ -325,11 +324,11 @@ public class Main {
                     System.out.println("Account balance updated successfully.");
 
                     // Insert transaction record
-                    String insertTransactionQuery = "INSERT INTO transactions (account_id, amount) VALUES (?, ?)";
+                    String insertTransactionQuery = "INSERT INTO transactions (sender_account_id, receiver_account_id, amount, transaction_type) VALUES (?, ?, ?, 'Deposit')";
                     PreparedStatement insertTransactionStatement = connection.prepareStatement(insertTransactionQuery);
                     insertTransactionStatement.setInt(1, accountId);
-                    //insertTransactionStatement.setInt(2, -1); // Placeholder for receiver account ID
-                    insertTransactionStatement.setDouble(2, amount);
+                    insertTransactionStatement.setInt(2, accountId); // Sender and receiver are the same account
+                    insertTransactionStatement.setDouble(3, amount);
                     int transactionResult = insertTransactionStatement.executeUpdate();
 
                     if (transactionResult > 0) {
@@ -361,11 +360,11 @@ public class Main {
                     }
 
                     // Insert transaction record
-                    String insertTransactionQuery = "INSERT INTO transactions (account_id, amount) VALUES (?, ?)";
+                    String insertTransactionQuery = "INSERT INTO transactions (sender_account_id, receiver_account_id, amount, transaction_type) VALUES (?, ?, ?, 'Deposit')";
                     PreparedStatement insertTransactionStatement = connection.prepareStatement(insertTransactionQuery);
                     insertTransactionStatement.setInt(1, accountId);
-                    insertTransactionStatement.setInt(2, -1); // Placeholder for receiver account ID
-                    insertTransactionStatement.setDouble(2, amount);
+                    insertTransactionStatement.setInt(2, accountId); // Sender and receiver are the same account
+                    insertTransactionStatement.setDouble(3, amount);
                     int transactionResult = insertTransactionStatement.executeUpdate();
 
                     if (transactionResult > 0) {
@@ -646,7 +645,7 @@ public class Main {
                         updateReceiverBalanceStatement.executeUpdate();
 
                         // Create transaction record
-                        String createTransactionQuery = "INSERT INTO transactions (sender_account_id, receiver_account_id, amount) VALUES (?, ?, ?)";
+                        String createTransactionQuery = "INSERT INTO transactions (sender_account_id, receiver_account_id, amount, transaction_type) VALUES (?, ?, ?, 'Transfer')";
                         PreparedStatement createTransactionStatement = connection.prepareStatement(createTransactionQuery);
                         createTransactionStatement.setInt(1, senderAccountId);
                         createTransactionStatement.setInt(2, receiverAccountId);
@@ -781,11 +780,6 @@ public class Main {
 
         connection.close();
     }
-
-
-
-
-
 
 
 
