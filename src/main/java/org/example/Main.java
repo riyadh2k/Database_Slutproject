@@ -1,13 +1,9 @@
 package org.example;
-import com.mysql.cj.jdbc.MysqlDataSource;
-import java.sql.*;
 
-import java.time.LocalDateTime;
+import com.mysql.cj.jdbc.MysqlDataSource;
+
+import java.sql.*;
 import java.util.Scanner;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class Main {
     static Scanner scanner;
@@ -25,62 +21,126 @@ public class Main {
         CreateTable();
         boolean run = true;
 
-        while (run) {
-            System.out.println("Choose what you want to do.");
-            System.out.println("1. Create user");
-            System.out.println("2. Delete User");
-            System.out.println("3. Add User's Account");
-            System.out.println("4. Remove User's Account ");
-            System.out.println("5. Update User's Information");
-            System.out.println("6. Send Amount  ");
-            System.out.println("7. List Of Account Transaction ");
-            System.out.println("8. User's Summary");
-            System.out.println("9. Avsluta");
+        // Perform user authentication
+        String userSocialSecurityNumber = authenticateUser();
+        if (userSocialSecurityNumber != null) {
+            System.out.println("Authentication successful. You are logged in.");
 
-            switch (scanner.nextLine().trim()) {
-                case "1":
-                    createUser();
-                    break;
+            if (userSocialSecurityNumber.equals("admin")) {
+                System.out.println("Admin operations:");
+                String adminPassword = "ps123456";
+                if (authenticateAdmin(adminPassword)) {
+                    while (run) {
+                        System.out.println("Choose what you want to do.");
+                        System.out.println("1. Create user");
+                        System.out.println("2. Delete User");
+                        System.out.println("3. Add User's Account");
+                        System.out.println("4. Remove User's Account ");
+                        System.out.println("5. Update User's Information");
+                        System.out.println("6. Send Amount  ");
+                        System.out.println("7. List Of Account Transaction ");
+                        System.out.println("8. User's Summary");
+                        System.out.println("9. Exit");
 
-                case "2":
-                    removeUser();
-                    break;
+                        switch (scanner.nextLine().trim()) {
+                            case "1":
+                                createUser();
+                                break;
 
-                case "3":
-                    addAccount();
-                    break;
-                case "4":
-                    removeAccount();
-                    break;
+                            case "2":
+                                removeUser();
+                                break;
 
-                case "5":
-                    updateUserDetails();
-                    break;
+                            case "3":
+                                addAccount();
+                                break;
+                            case "4":
+                                removeAccount();
+                                break;
 
-                case "6":
-                    sendTransaction();
-                    break;
+                            case "5":
+                                updateUserDetails();
+                                break;
 
-                case "7":
-                    listAccountTransactions();
-                    break;
+                            case "6":
+                                sendTransaction();
+                                break;
 
-                case "8":
-                    userSummary();
-                    break;
+                            case "7":
+                                listAccountTransactions();
+                                break;
 
-                case "9":
-                    run = false;
-                    break;
+                            case "8":
+                                userSummary();
+                                break;
 
-                default:
-                    break;
+                            case "9":
+                                run = false;
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+                } else {
+                    System.out.println("Invalid admin password. Exiting the program.");
+                    return;
+                }
+            } else {
+                System.out.println("Regular user operations:");
+                while (run) {
+                    System.out.println("Choose what you want to do.");
+                    System.out.println("3. Add User's Account");
+                    System.out.println("4. Remove User's Account ");
+                    System.out.println("5. Update User's Information");
+                    System.out.println("6. Send Amount  ");
+                    System.out.println("7. List Of Account Transaction ");
+                    System.out.println("8. User's Summary");
+                    System.out.println("9. Exit");
+
+                    switch (scanner.nextLine().trim()) {
+                        case "3":
+                            addAccount();
+                            break;
+
+                        case "4":
+                            removeAccount();
+                            break;
+
+                        case "5":
+                            updateUserDetails();
+                            break;
+
+                        case "6":
+                            sendTransaction();
+                            break;
+
+                        case "7":
+                            listAccountTransactions();
+                            break;
+
+                        case "8":
+                            userSummary();
+                            break;
+
+                        case "9":
+                            run = false;
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
             }
+        } else {
+            System.out.println("Authentication failed. Exiting the program.");
+            return;
         }
     }
 
 
-    //Konfigurerar kopplingar mot databasen
+
+    //Configure connections to the database
     public static void InitializeDatabase() {
         try {
             System.out.print("Configuring data source...");
@@ -98,24 +158,56 @@ public class Main {
         }
     }
 
-    private static void PrintSQLException(SQLException e) {
+    static void PrintSQLException(SQLException e) {
     }
 
-    //Skapar en tillfällig koppling till databasen
+    //Creates a temporary connection to the database
     public static Connection GetConnection() {
         try {
-//System.out.printf("Fetching connection to database...");
+            //System.out.printf("Fetching connection to database...");
             Connection connection = dataSource.getConnection();
-//System.out.printf("done!\n");
+            //System.out.printf("done!\n");
             return connection;
         } catch (SQLException e) {
-//System.out.printf("failed!\n");
+            //System.out.printf("failed!\n");
             PrintSQLException(e);
             System.exit(0);
             return null;
         }
     }
+    private static String authenticateUser() throws SQLException {
+        Connection connection = dataSource.getConnection();
 
+        System.out.print("Enter username: ");
+        String username = scanner.nextLine();
+
+        System.out.print("Enter password: ");
+        String password = scanner.nextLine();
+
+        if (username.equals("admin") && password.equals("ps123456")) {
+            connection.close();
+            return username;
+        }
+
+        String verifyUserQuery = "SELECT social_security_number FROM users WHERE social_security_number = ? AND password = ?";
+        PreparedStatement verifyUserStatement = connection.prepareStatement(verifyUserQuery);
+        verifyUserStatement.setString(1, username);
+        verifyUserStatement.setString(2, password);
+        ResultSet resultSet = verifyUserStatement.executeQuery();
+
+        if (resultSet.next()) {
+            String userSocialSecurityNumber = resultSet.getString("social_security_number");
+            connection.close();
+            return userSocialSecurityNumber;
+        }
+
+        connection.close();
+        return null;
+    }
+
+    private static boolean authenticateAdmin(String password) {
+        return password.equals("ps123456");
+    }
     public static void CreateTable() throws SQLException {
         Connection connection = GetConnection();
         Statement statement = connection.createStatement();
@@ -246,9 +338,10 @@ public class Main {
         }
 
         // Delete associated transactions
-        String deleteTransactionsQuery = "DELETE FROM transactions WHERE sender_account_id IN (SELECT account_id FROM accounts WHERE user_id = (SELECT user_id FROM users WHERE social_security_number = ?))";
+        String deleteTransactionsQuery = "DELETE FROM transactions WHERE sender_account_id IN (SELECT account_id FROM accounts WHERE user_id = (SELECT user_id FROM users WHERE social_security_number = ?)) OR receiver_account_id IN (SELECT account_id FROM accounts WHERE user_id = (SELECT user_id FROM users WHERE social_security_number = ?))";
         PreparedStatement deleteTransactionsStatement = connection.prepareStatement(deleteTransactionsQuery);
         deleteTransactionsStatement.setString(1, socialSecurityNumber);
+        deleteTransactionsStatement.setString(2, socialSecurityNumber);
         deleteTransactionsStatement.executeUpdate();
 
         // Delete associated accounts
@@ -271,6 +364,8 @@ public class Main {
 
         connection.close();
     }
+
+
 
     public static void addAccount() throws SQLException {
         Connection connection = GetConnection();
@@ -420,17 +515,18 @@ public class Main {
                 // Account exists, delete the account and associated transactions
                 int accountId = accountResultSet.getInt("account_id");
 
-                // Delete the account from the accounts table
+                // Delete associated transactions
+                String deleteTransactionsQuery = "DELETE FROM transactions WHERE sender_account_id = ? OR receiver_account_id = ?";
+                PreparedStatement deleteTransactionsStatement = connection.prepareStatement(deleteTransactionsQuery);
+                deleteTransactionsStatement.setInt(1, accountId);
+                deleteTransactionsStatement.setInt(2, accountId);
+                int transactionsResult = deleteTransactionsStatement.executeUpdate();
+
+                // Delete the account
                 String deleteAccountQuery = "DELETE FROM accounts WHERE account_id = ?";
                 PreparedStatement deleteAccountStatement = connection.prepareStatement(deleteAccountQuery);
                 deleteAccountStatement.setInt(1, accountId);
                 int accountResult = deleteAccountStatement.executeUpdate();
-
-                // Delete the transactions associated with the account from the transactions table
-                String deleteTransactionsQuery = "DELETE FROM transactions WHERE account_id = ? ";
-                PreparedStatement deleteTransactionsStatement = connection.prepareStatement(deleteTransactionsQuery);
-                deleteTransactionsStatement.setInt(1, accountId);
-                int transactionsResult = deleteTransactionsStatement.executeUpdate();
 
                 if (accountResult > 0 && transactionsResult > 0) {
                     System.out.println("Account and associated transactions have been removed successfully.");
@@ -447,6 +543,7 @@ public class Main {
 
         connection.close();
     }
+
 
     public static void updateUserDetails() throws SQLException {
         Connection connection = GetConnection();
@@ -605,10 +702,10 @@ public class Main {
                 while (receiverAccountsResultSet.next()) {
                     int receiverAccountId = receiverAccountsResultSet.getInt("account_id");
                     String accountNumber = receiverAccountsResultSet.getString("account_number");
-                    double balance = receiverAccountsResultSet.getDouble("balance");
 
-                    System.out.println("Account ID: " + receiverAccountId + ", Account Number: " + accountNumber + ", Balance: " + balance);
+                    System.out.println("Account ID: " + receiverAccountId + ", Account Number: " + accountNumber);
                 }
+
 
                 // Prompt for the receiver's account ID
                 System.out.print("Enter the Account ID of the receiver: ");
@@ -672,6 +769,7 @@ public class Main {
 
 
 
+
     public static void listAccountTransactions() throws SQLException {
         Connection connection = GetConnection();
 
@@ -696,29 +794,32 @@ public class Main {
             int accountId = accountIdResultSet.getInt("account_id");
 
             // Retrieve transactions for the specified account and date range
-            String getAccountTransactionsQuery = "SELECT * FROM transactions WHERE (account_id=? OR sender_account_id = ? OR receiver_account_id = ?) AND transaction_date_time BETWEEN ? AND ? ORDER BY transaction_date_time";
+            String getAccountTransactionsQuery = "SELECT t.*, s.account_number AS sender_account_number, r.account_number AS receiver_account_number FROM transactions t " +
+                    "JOIN accounts s ON t.sender_account_id = s.account_id " +
+                    "JOIN accounts r ON t.receiver_account_id = r.account_id " +
+                    "WHERE (t.sender_account_id = ? OR t.receiver_account_id = ?) AND t.transaction_date_time BETWEEN ? AND ? " +
+                    "ORDER BY t.transaction_date_time";
             PreparedStatement getAccountTransactionsStatement = connection.prepareStatement(getAccountTransactionsQuery);
             getAccountTransactionsStatement.setInt(1, accountId);
             getAccountTransactionsStatement.setInt(2, accountId);
-            getAccountTransactionsStatement.setInt(3, accountId);
-            getAccountTransactionsStatement.setString(4, startDate);
-            getAccountTransactionsStatement.setString(5, endDate);
+            getAccountTransactionsStatement.setString(3, startDate);
+            getAccountTransactionsStatement.setString(4, endDate);
             ResultSet transactionsResultSet = getAccountTransactionsStatement.executeQuery();
 
             System.out.println("Account Transactions:");
             while (transactionsResultSet.next()) {
                 int transactionId = transactionsResultSet.getInt("transaction_id");
-                int accountsId = transactionsResultSet.getInt("account_id");
-                int senderAccountId = transactionsResultSet.getInt("sender_account_id");
-                int receiverAccountId = transactionsResultSet.getInt("receiver_account_id");
+                String senderAccountNumber = transactionsResultSet.getString("sender_account_number");
+                String receiverAccountNumber = transactionsResultSet.getString("receiver_account_number");
                 double amount = transactionsResultSet.getDouble("amount");
                 String transactionDateTime = transactionsResultSet.getString("transaction_date_time");
+                String transactionType = transactionsResultSet.getString("transaction_type");
 
                 System.out.println("Transaction ID: " + transactionId);
-                System.out.println("Accounts ID: " + accountsId);
-                System.out.println("Sender Account ID: " + senderAccountId);
-                System.out.println("Receiver Account ID: " + receiverAccountId);
+                System.out.println("Sender Account Number: " + senderAccountNumber);
+                System.out.println("Receiver Account Number: " + receiverAccountNumber);
                 System.out.println("Amount: " + amount);
+                System.out.println("Transaction Type: " + transactionType);
                 System.out.println("Transaction Date Time: " + transactionDateTime);
                 System.out.println("--------------------");
             }
