@@ -13,5 +13,17 @@
         <maven.compiler.target>19</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.wso2.bps</groupId>
+            <artifactId>UserService</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.33</version>
+        </dependency>
+    </dependencies>
 
 </project>

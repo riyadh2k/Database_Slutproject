@@ -4,9 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="045f70ed-7b3a-476b-9310-1f18e1f8ca0f" name="Changes" comment="primary3">
+    <list default="true" id="045f70ed-7b3a-476b-9310-1f18e1f8ca0f" name="Changes" comment="problem solve in user menu 5">
+      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/Account.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/DatabaseManager.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/Model.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/Password.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/PasswordModel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/Transaction.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/User.java" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,28 +47,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "project.structure.last.edited": "Modules",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "preferences.editor",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settings.project.maven.repository.indices&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "mysql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;mysql&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -70,7 +78,8 @@
       <option name="presentableId" value="Default" />
       <updated>1685002742677</updated>
       <workItem from="1685002744078" duration="1754000" />
-      <workItem from="1685005268672" duration="78319000" />
+      <workItem from="1685005268672" duration="93193000" />
+      <workItem from="1685625165953" duration="8931000" />
     </task>
     <task id="LOCAL-00001" summary="primary">
       <created>1685272185084</created>
@@ -100,7 +109,14 @@
       <option name="project" value="LOCAL" />
       <updated>1685486509968</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="problem solve in user menu 5">
+      <created>1685565937669</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1685565937669</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -110,7 +126,8 @@
     <MESSAGE value="primary" />
     <MESSAGE value="primary2" />
     <MESSAGE value="primary3" />
-    <option name="LAST_COMMIT_MESSAGE" value="primary3" />
+    <MESSAGE value="problem solve in user menu 5" />
+    <option name="LAST_COMMIT_MESSAGE" value="problem solve in user menu 5" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

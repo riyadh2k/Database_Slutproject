@@ -2,9 +2,12 @@ package org.example;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 
+import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.Scanner;
+
+import static org.example.PasswordModel.hashPassword;
 
 
 public class Main {
@@ -17,7 +20,7 @@ public class Main {
     static String password = "";
     static String userSocialSecurityNumber;
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, NoSuchAlgorithmException {
         scanner = new Scanner(System.in);
 
         InitializeDatabase();
@@ -45,7 +48,8 @@ public class Main {
                     username = scanner.nextLine();
                     System.out.print("Enter password: ");
                     password = scanner.nextLine();
-                    if (authenticateUser(username, password)) {
+
+                    if (PasswordModel.authenticateUser(username, password)) {
                         System.out.println("Authentication successful. You are logged in.");
                         userSocialSecurityNumber = username;
                         userMenu();
@@ -53,6 +57,7 @@ public class Main {
                         System.out.println("Authentication failed. Please try again.");
                     }
                     break;
+
 
                 case "4":
                     run = false;
@@ -64,7 +69,7 @@ public class Main {
 
         }
     }
-    private static void userMenu() throws SQLException {
+    private static void userMenu() throws SQLException, NoSuchAlgorithmException {
         boolean run = true;
         while (run) {
             System.out.println("Choose what you want to do.");
@@ -147,24 +152,6 @@ public class Main {
             return null;
         }
     }
-    private static boolean authenticateUser(String username, String password) throws SQLException {
-        Connection connection = GetConnection();
-
-        String verifyUserQuery = "SELECT social_security_number FROM users WHERE social_security_number = ? AND password = ?";
-        PreparedStatement verifyUserStatement = connection.prepareStatement(verifyUserQuery);
-        verifyUserStatement.setString(1, username);
-        verifyUserStatement.setString(2, password);
-        ResultSet resultSet = verifyUserStatement.executeQuery();
-
-        if (resultSet.next()) {
-            connection.close();
-            return true;
-        }
-
-        connection.close();
-        return false;
-    }
-
 
 
     public static void CreateTable() throws SQLException {
@@ -215,7 +202,7 @@ public class Main {
 
         connection.close();
     }
-    public static void createUser() throws SQLException {
+    public static void createUser() throws SQLException, NoSuchAlgorithmException {
         Connection connection = GetConnection();
 
         Scanner scanner = new Scanner(System.in);
@@ -239,6 +226,9 @@ public class Main {
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
+        // Hash the password
+        String hashedPassword = hashPassword(password);
+
         System.out.print("Enter name: ");
         String name = scanner.nextLine();
 
@@ -251,11 +241,11 @@ public class Main {
         System.out.print("Enter phone number: ");
         String phoneNumber = scanner.nextLine();
 
-        String insertUserQuery = "INSERT INTO users (social_security_number, password, name, email, address, phone_number) VALUES (?, ?, ?, ?, ?,?)";
+        String insertUserQuery = "INSERT INTO users (social_security_number, password, name, email, address, phone_number) VALUES (?, ?, ?, ?, ?, ?)";
 
         PreparedStatement insertUserStatement = connection.prepareStatement(insertUserQuery);
         insertUserStatement.setString(1, socialSecurityNumber);
-        insertUserStatement.setString(2, password);
+        insertUserStatement.setString(2, hashedPassword);
         insertUserStatement.setString(3, name);
         insertUserStatement.setString(4, email);
         insertUserStatement.setString(5, address);
@@ -271,6 +261,7 @@ public class Main {
 
         connection.close();
     }
+
     public static void removeUser() throws SQLException {
         Connection connection = GetConnection();
 
@@ -283,55 +274,47 @@ public class Main {
         String password = scanner.nextLine();
 
         // Verify user credentials
-        String verifyUserQuery = "SELECT COUNT(*) FROM users WHERE social_security_number = ? AND password = ?";
-        PreparedStatement verifyUserStatement = connection.prepareStatement(verifyUserQuery);
-        verifyUserStatement.setString(1, username);
-        verifyUserStatement.setString(2, password);
-        ResultSet resultSet = verifyUserStatement.executeQuery();
-        resultSet.next();
-        int count = resultSet.getInt(1);
-        if (count == 0) {
-            System.out.println("Invalid username or password.");
-            connection.close();
-            return;
-        }
+        if (PasswordModel.authenticateUser(username, password)) {
+            // User authentication successful
 
-        // Get the user ID
-        String getUserIdQuery = "SELECT user_id FROM users WHERE social_security_number = ?";
-        PreparedStatement getUserIdStatement = connection.prepareStatement(getUserIdQuery);
-        getUserIdStatement.setString(1, username);
-        ResultSet userIdResultSet = getUserIdStatement.executeQuery();
-        userIdResultSet.next();
-        int userId = userIdResultSet.getInt("user_id");
+            // Get the user ID
+            String getUserIdQuery = "SELECT user_id FROM users WHERE social_security_number = ?";
+            PreparedStatement getUserIdStatement = connection.prepareStatement(getUserIdQuery);
+            getUserIdStatement.setString(1, username);
+            ResultSet userIdResultSet = getUserIdStatement.executeQuery();
+            userIdResultSet.next();
+            int userId = userIdResultSet.getInt("user_id");
 
-        // Delete associated transactions
-        String deleteTransactionsQuery = "DELETE FROM transactions WHERE sender_account_id IN (SELECT account_id FROM accounts WHERE user_id = ?) OR receiver_account_id IN (SELECT account_id FROM accounts WHERE user_id = ?)";
-        PreparedStatement deleteTransactionsStatement = connection.prepareStatement(deleteTransactionsQuery);
-        deleteTransactionsStatement.setInt(1, userId);
-        deleteTransactionsStatement.setInt(2, userId);
-        deleteTransactionsStatement.executeUpdate();
+            // Delete associated transactions
+            String deleteTransactionsQuery = "DELETE FROM transactions WHERE sender_account_id IN (SELECT account_id FROM accounts WHERE user_id = ?) OR receiver_account_id IN (SELECT account_id FROM accounts WHERE user_id = ?)";
+            PreparedStatement deleteTransactionsStatement = connection.prepareStatement(deleteTransactionsQuery);
+            deleteTransactionsStatement.setInt(1, userId);
+            deleteTransactionsStatement.setInt(2, userId);
+            deleteTransactionsStatement.executeUpdate();
 
-        // Delete associated accounts
-        String deleteAccountsQuery = "DELETE FROM accounts WHERE user_id = ?";
-        PreparedStatement deleteAccountsStatement = connection.prepareStatement(deleteAccountsQuery);
-        deleteAccountsStatement.setInt(1, userId);
-        deleteAccountsStatement.executeUpdate();
+            // Delete associated accounts
+            String deleteAccountsQuery = "DELETE FROM accounts WHERE user_id = ?";
+            PreparedStatement deleteAccountsStatement = connection.prepareStatement(deleteAccountsQuery);
+            deleteAccountsStatement.setInt(1, userId);
+            deleteAccountsStatement.executeUpdate();
 
-        // Delete user
-        String deleteUserQuery = "DELETE FROM users WHERE social_security_number = ?";
-        PreparedStatement deleteUserStatement = connection.prepareStatement(deleteUserQuery);
-        deleteUserStatement.setString(1, username);
-        int result = deleteUserStatement.executeUpdate();
+            // Delete user
+            String deleteUserQuery = "DELETE FROM users WHERE social_security_number = ?";
+            PreparedStatement deleteUserStatement = connection.prepareStatement(deleteUserQuery);
+            deleteUserStatement.setString(1, username);
+            int result = deleteUserStatement.executeUpdate();
 
-        if (result > 0) {
-            System.out.println("User and associated records removed successfully.");
+            if (result > 0) {
+                System.out.println("User and associated records removed successfully.");
+            } else {
+                System.out.println("Failed to remove user.");
+            }
         } else {
-            System.out.println("Failed to remove user.");
+            System.out.println("Invalid username or password.");
         }
 
         connection.close();
     }
-
 
     public static void addAccount() throws SQLException {
         Connection connection = GetConnection();
@@ -496,7 +479,7 @@ public class Main {
         connection.close();
     }
 
-    public static void updateUserDetails() throws SQLException {
+    public static void updateUserDetails() throws SQLException, NoSuchAlgorithmException {
         Connection connection = GetConnection();
 
         Scanner scanner = new Scanner(System.in);
@@ -546,6 +529,15 @@ public class Main {
 
             if (!newAddress.isEmpty()) {
                 userResultSet.updateString("address", newAddress);
+            }
+
+            // Update the password if a new password is provided
+            System.out.print("New password: ");
+            String newPassword = scanner.nextLine();
+            if (!newPassword.isEmpty()) {
+                // Hash the new password
+                String hashedPassword = PasswordModel.hashPassword(newPassword);
+                userResultSet.updateString("password", hashedPassword);
             }
 
             // Commit the updates
@@ -617,72 +609,80 @@ public class Main {
                 getReceiverAccountsStatement.setInt(1, receiverUserId);
                 ResultSet receiverAccountsResultSet = getReceiverAccountsStatement.executeQuery();
 
+                boolean receiverHasAccounts = false; // Flag to track if receiver has accounts
+
                 System.out.println("Receiver's Accounts:");
                 while (receiverAccountsResultSet.next()) {
                     int receiverAccountId = receiverAccountsResultSet.getInt("account_id");
                     String accountNumber = receiverAccountsResultSet.getString("account_number");
 
                     System.out.println("Account ID: " + receiverAccountId + ", Account Number: " + accountNumber);
+
+                    receiverHasAccounts = true; // Set the flag to true if receiver has accounts
                 }
 
-                // Prompt for the receiver's account ID
-                System.out.print("Enter the Account ID of the receiver: ");
-                int receiverAccountId = scanner.nextInt();
+                if (receiverHasAccounts) {
+                    // Prompt for the receiver's account ID
+                    System.out.print("Enter the Account ID of the receiver: ");
+                    int receiverAccountId = scanner.nextInt();
 
-                // Verify receiver's account existence
-                String verifyReceiverAccountQuery = "SELECT * FROM accounts WHERE account_id = ?";
-                PreparedStatement verifyReceiverAccountStatement = connection.prepareStatement(verifyReceiverAccountQuery);
-                verifyReceiverAccountStatement.setInt(1, receiverAccountId);
-                ResultSet receiverAccountResultSet = verifyReceiverAccountStatement.executeQuery();
+                    // Verify receiver's account existence
+                    String verifyReceiverAccountQuery = "SELECT * FROM accounts WHERE account_id = ?";
+                    PreparedStatement verifyReceiverAccountStatement = connection.prepareStatement(verifyReceiverAccountQuery);
+                    verifyReceiverAccountStatement.setInt(1, receiverAccountId);
+                    ResultSet receiverAccountResultSet = verifyReceiverAccountStatement.executeQuery();
 
-                if (receiverAccountResultSet.next()) {
-                    // Prompt for the transaction amount
-                    System.out.print("Enter the amount to send: ");
-                    double amount = scanner.nextDouble();
+                    if (receiverAccountResultSet.next()) {
+                        // Prompt for the transaction amount
+                        System.out.print("Enter the amount to send: ");
+                        double amount = scanner.nextDouble();
 
-                    // Verify sender's account balance
-                    String verifyBalanceQuery = "SELECT balance FROM accounts WHERE account_id = ? AND user_id = ?";
-                    PreparedStatement verifyBalanceStatement = connection.prepareStatement(verifyBalanceQuery);
-                    verifyBalanceStatement.setInt(1, senderAccountId);
-                    verifyBalanceStatement.setInt(2, senderUserId);
-                    ResultSet balanceResultSet = verifyBalanceStatement.executeQuery();
+                        // Verify sender's account balance
+                        String verifyBalanceQuery = "SELECT balance FROM accounts WHERE account_id = ? AND user_id = ?";
+                        PreparedStatement verifyBalanceStatement = connection.prepareStatement(verifyBalanceQuery);
+                        verifyBalanceStatement.setInt(1, senderAccountId);
+                        verifyBalanceStatement.setInt(2, senderUserId);
+                        ResultSet balanceResultSet = verifyBalanceStatement.executeQuery();
 
-                    if (balanceResultSet.next()) {
-                        double senderBalance = balanceResultSet.getDouble("balance");
+                        if (balanceResultSet.next()) {
+                            double senderBalance = balanceResultSet.getDouble("balance");
 
-                        if (senderBalance >= amount) {
-                            // Update sender's balance
-                            double newSenderBalance = senderBalance - amount;
-                            String updateSenderBalanceQuery = "UPDATE accounts SET balance = ? WHERE account_id = ?";
-                            PreparedStatement updateSenderBalanceStatement = connection.prepareStatement(updateSenderBalanceQuery);
-                            updateSenderBalanceStatement.setDouble(1, newSenderBalance);
-                            updateSenderBalanceStatement.setInt(2, senderAccountId);
-                            updateSenderBalanceStatement.executeUpdate();
+                            if (senderBalance >= amount) {
+                                // Update sender's balance
+                                double newSenderBalance = senderBalance - amount;
+                                String updateSenderBalanceQuery = "UPDATE accounts SET balance = ? WHERE account_id = ?";
+                                PreparedStatement updateSenderBalanceStatement = connection.prepareStatement(updateSenderBalanceQuery);
+                                updateSenderBalanceStatement.setDouble(1, newSenderBalance);
+                                updateSenderBalanceStatement.setInt(2, senderAccountId);
+                                updateSenderBalanceStatement.executeUpdate();
 
-                            // Update receiver's balance
-                            String updateReceiverBalanceQuery = "UPDATE accounts SET balance = balance + ? WHERE account_id = ?";
-                            PreparedStatement updateReceiverBalanceStatement = connection.prepareStatement(updateReceiverBalanceQuery);
-                            updateReceiverBalanceStatement.setDouble(1, amount);
-                            updateReceiverBalanceStatement.setInt(2, receiverAccountId);
-                            updateReceiverBalanceStatement.executeUpdate();
+                                // Update receiver's balance
+                                String updateReceiverBalanceQuery = "UPDATE accounts SET balance = balance + ? WHERE account_id = ?";
+                                PreparedStatement updateReceiverBalanceStatement = connection.prepareStatement(updateReceiverBalanceQuery);
+                                updateReceiverBalanceStatement.setDouble(1, amount);
+                                updateReceiverBalanceStatement.setInt(2, receiverAccountId);
+                                updateReceiverBalanceStatement.executeUpdate();
 
-                            // Create transaction record
-                            String createTransactionQuery = "INSERT INTO transactions (sender_account_id, receiver_account_id, amount, transaction_type) VALUES (?, ?, ?, 'Transfer')";
-                            PreparedStatement createTransactionStatement = connection.prepareStatement(createTransactionQuery);
-                            createTransactionStatement.setInt(1, senderAccountId);
-                            createTransactionStatement.setInt(2, receiverAccountId);
-                            createTransactionStatement.setDouble(3, amount);
-                            createTransactionStatement.executeUpdate();
+                                // Create transaction record
+                                String createTransactionQuery = "INSERT INTO transactions (sender_account_id, receiver_account_id, amount, transaction_type) VALUES (?, ?, ?, 'Transfer')";
+                                PreparedStatement createTransactionStatement = connection.prepareStatement(createTransactionQuery);
+                                createTransactionStatement.setInt(1, senderAccountId);
+                                createTransactionStatement.setInt(2, receiverAccountId);
+                                createTransactionStatement.setDouble(3, amount);
+                                createTransactionStatement.executeUpdate();
 
-                            System.out.println("Transaction sent successfully.");
+                                System.out.println("Transaction sent successfully.");
+                            } else {
+                                System.out.println("Insufficient balance in the sender's account.");
+                            }
                         } else {
-                            System.out.println("Insufficient balance in the sender's account.");
+                            System.out.println("Invalid sender account.");
                         }
                     } else {
-                        System.out.println("Invalid sender account.");
+                        System.out.println("Invalid receiver account.");
                     }
                 } else {
-                    System.out.println("Invalid receiver account.");
+                    System.out.println("No accounts associated with the receiver.");
                 }
             } else {
                 System.out.println("Receiver not found.");
@@ -754,7 +754,14 @@ public class Main {
                     String transactionType = accountTransactionsResultSet.getString("transaction_type");
                     LocalDateTime transactionDateTime = accountTransactionsResultSet.getTimestamp("transaction_date_time").toLocalDateTime();
 
-                    System.out.println("Transaction ID: " + transactionId + ", Sender Account Number: " + senderAccountNumber + ", Receiver Account Number: " + receiverAccountNumber + ", Amount: " + amount + ", Transaction Type: " + transactionType + ", Transaction Date Time: " + transactionDateTime);
+                    System.out.println("_________________________");
+                    System.out.println("Transaction ID: " + transactionId);
+                    System.out.println("Sender Account Number: " + senderAccountNumber);
+                    System.out.println("Receiver Account Number: " + receiverAccountNumber);
+                    System.out.println("Amount: " + amount);
+                    System.out.println("Transaction Type: " + transactionType);
+                    System.out.println("Transaction Date Time: " + transactionDateTime);
+                    System.out.println("_________________________");
                 }
             } else {
                 System.out.println("Account not found.");
@@ -765,68 +772,6 @@ public class Main {
 
         connection.close();
     }
-
-
-    /*public static void listAccountTransactions() throws SQLException {
-        Connection connection = GetConnection();
-
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.print("Enter account number: ");
-        String accountNumber = scanner.nextLine();
-
-        System.out.print("Enter start date (yyyy-MM-dd): ");
-        String startDate = scanner.nextLine();
-
-        System.out.print("Enter end date (yyyy-MM-dd): ");
-        String endDate = scanner.nextLine();
-
-        // Retrieve account ID based on account number
-        String getAccountIdQuery = "SELECT account_id FROM accounts WHERE account_number = ?";
-        PreparedStatement getAccountIdStatement = connection.prepareStatement(getAccountIdQuery);
-        getAccountIdStatement.setString(1, accountNumber);
-        ResultSet accountIdResultSet = getAccountIdStatement.executeQuery();
-
-        if (accountIdResultSet.next()) {
-            int accountId = accountIdResultSet.getInt("account_id");
-
-            // Retrieve transactions for the specified account and date range
-            String getAccountTransactionsQuery = "SELECT t.*, s.account_number AS sender_account_number, r.account_number AS receiver_account_number FROM transactions t " +
-                    "JOIN accounts s ON t.sender_account_id = s.account_id " +
-                    "JOIN accounts r ON t.receiver_account_id = r.account_id " +
-                    "WHERE (s.account_id = ? OR r.account_id = ?) AND t.transaction_date_time BETWEEN ? AND ? " +
-                    "ORDER BY t.transaction_date_time";
-            PreparedStatement getAccountTransactionsStatement = connection.prepareStatement(getAccountTransactionsQuery);
-            getAccountTransactionsStatement.setInt(1, accountId);
-            getAccountTransactionsStatement.setInt(2, accountId);
-            getAccountTransactionsStatement.setString(3, startDate + " 00:00:00");
-            getAccountTransactionsStatement.setString(4, endDate + " 23:59:59");
-            ResultSet accountTransactionsResultSet = getAccountTransactionsStatement.executeQuery();
-
-            System.out.println("Account Transactions:");
-            while (accountTransactionsResultSet.next()) {
-                int transactionId = accountTransactionsResultSet.getInt("transaction_id");
-                String senderAccountNumber = accountTransactionsResultSet.getString("sender_account_number");
-                String receiverAccountNumber = accountTransactionsResultSet.getString("receiver_account_number");
-                double amount = accountTransactionsResultSet.getDouble("amount");
-                String transactionType = accountTransactionsResultSet.getString("transaction_type");
-                LocalDateTime transactionDateTime = accountTransactionsResultSet.getTimestamp("transaction_date_time").toLocalDateTime();
-
-                System.out.println("Transaction ID: " + transactionId + ", Sender Account Number: " + senderAccountNumber + ", Receiver Account Number: " + receiverAccountNumber + ", Amount: " + amount + ", Transaction Type: " + transactionType + ", Transaction Date Time: " + transactionDateTime);
-            }
-        } else {
-            System.out.println("Invalid account number.");
-        }
-
-        connection.close();
-    }*/
-
-
-
-
-
-
-
 
 
     public static void userSummary() throws SQLException {
@@ -879,6 +824,3 @@ public class Main {
 
 
 }
-
-
-
